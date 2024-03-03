@@ -1,0 +1,15 @@
+[tool.poetry]
+name = "chess"
+version = "0.1.0"
+description = ""
+authors = ["Andy Miles <akmiles@icloud.com>"]
+readme = "README.md"
+packages = [{include = "chess", from = "src"}]
+
+[tool.poetry.dependencies]
+python = "^3.12"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
