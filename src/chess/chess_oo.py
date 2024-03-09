@@ -4,16 +4,18 @@ import pygame
 import chess
 import chess.svg
 
+
 class Piece:
-    def __init__(self):
-        pass
+    def __init__(self, color):
+        self.color = color
 
     def is_valid_move(self):
         pass
 
+
 class Pawn(Piece):
     def __init__(self, color):
-        self.color = color
+        super().__init__(color)
 
     def is_valid_move(start_row, start_col, end_row, end_col, board):
         moving_piece = board[start_row][start_col]
@@ -24,20 +26,26 @@ class Pawn(Piece):
         if destination_piece is not None:
             destination_piece_color = destination_piece[0]
             if moving_piece_color == destination_piece_color:
-                return False  
+                return False
         direction = -1 if self.color == 'w' else 1
         if start_col == end_col and board[end_row][end_col] is None:
             if (end_row - start_row) == direction:
                 return True
-            if start_row == (6 if self.color == 'w' else 1) and (end_row - start_row) == 2 * direction and board[start_row + direction][start_col] is None:
+            if start_row == (6 if self.color == 'w' else 1) and (
+                    end_row - start_row) == 2 * direction and \
+                    board[start_row + direction][start_col] is None:
                 return True
-        elif abs(start_col - end_col) == 1 and (end_row - start_row) == direction and board[end_row][end_col] is not None and board[end_row][end_col][0] != self.color:
+        elif abs(start_col - end_col) == 1 and (
+                end_row - start_row) == direction and board[end_row][
+            end_col] is not None and board[end_row][end_col][0] != self.color:
             return True
         return False
 
+
 class King(Piece):
-    def __init__(self):
-        pass
+    def __init__(self, color):
+        super().__init__(color)
+
     def is_valid_move(start_row, start_col, end_row, end_col, board):
         moving_piece = board[start_row][start_col]
         destination_piece = board[end_row][end_col]
@@ -47,7 +55,7 @@ class King(Piece):
         if destination_piece is not None:
             destination_piece_color = destination_piece[0]
             if moving_piece_color == destination_piece_color:
-                return False 
+                return False
         return abs(start_row - end_row) <= 1 and abs(start_col - end_col) <= 1
 
     # encapsulation
@@ -58,7 +66,8 @@ class King(Piece):
         rook_key = 'right' if king_side else 'left'
         if rook_moved[color][rook_key]:
             return False
-        start, end = (4, rook_position) if rook_position > 4 else (rook_position, 4)
+        start, end = (4, rook_position) if rook_position > 4 else (
+        rook_position, 4)
         for col in range(start + 1, end):
             if board[7 if color == 'w' else 0][col] is not None:
                 return False
@@ -71,9 +80,12 @@ class King(Piece):
         if self._can_castle():
             pass
         # etc
+
+
 class Queen(Piece):
-    def __init__(self):
-        pass
+    def __init__(self, color):
+        super().__init__(color)
+
     def is_valid_queen_move(start_row, start_col, end_row, end_col, board):
         moving_piece = board[start_row][start_col]
         destination_piece = board[end_row][end_col]
@@ -83,12 +95,26 @@ class Queen(Piece):
         if destination_piece is not None:
             destination_piece_color = destination_piece[0]
             if moving_piece_color == destination_piece_color:
-                return False 
-        return is_valid_rook_move(start_row, start_col, end_row, end_col, board) or is_valid_bishop_move(start_row, start_col, end_row, end_col, board)
+                return False
+        return (is_valid_rook_move(
+            start_row,
+            start_col,
+            end_row,
+            end_col,
+            board) or
+                is_valid_bishop_move(
+                    start_row,
+                    start_col,
+                    end_row,
+                    end_col,
+                    board)
+                )
 
-class Kinght(Piece):
-    def __init__(self):
-        pass
+
+class Knight(Piece):
+    def __init__(self, color):
+        super().__init__(color)
+
     def is_valid_knight_move(start_row, start_col, end_row, end_col, board):
         moving_piece = board[start_row][start_col]
         destination_piece = board[end_row][end_col]
@@ -98,13 +124,17 @@ class Kinght(Piece):
         if destination_piece is not None:
             destination_piece_color = destination_piece[0]
             if moving_piece_color == destination_piece_color:
-                return False 
-        return (abs(start_row - end_row) == 2 and abs(start_col - end_col) == 1) or (abs(start_row - end_row) == 1 and abs(start_col - end_col) == 2)
+                return False
+        return (abs(start_row - end_row) == 2 and abs(
+            start_col - end_col) == 1) or (
+                    abs(start_row - end_row) == 1 and abs(
+                start_col - end_col) == 2)
+
 
 class Rook(Piece):
     def __init__(self, color):
-        self.color = color
-        
+        super().__init__(color)
+
     def is_valid_rook_move(start_row, start_col, end_row, end_col, board):
         moving_piece = board[start_row][start_col]
         destination_piece = board[end_row][end_col]
@@ -114,7 +144,7 @@ class Rook(Piece):
         if destination_piece is not None:
             destination_piece_color = destination_piece[0]
             if moving_piece_color == destination_piece_color:
-                return False 
+                return False
         if start_row == end_row:
             step = 1 if start_col < end_col else -1
             for col in range(start_col + step, end_col, step):
@@ -128,9 +158,12 @@ class Rook(Piece):
                     return False
             return True
         return False
+
+
 class Bishop(Piece):
-    def __init__(self):
-        pass
+    def __init__(self, color):
+        super().__init__(color)
+
     def is_valid_bishop_move(start_row, start_col, end_row, end_col, board):
         moving_piece = board[start_row][start_col]
         destination_piece = board[end_row][end_col]
@@ -140,7 +173,7 @@ class Bishop(Piece):
         if destination_piece is not None:
             destination_piece_color = destination_piece[0]
             if moving_piece_color == destination_piece_color:
-                return False 
+                return False
         if abs(start_row - end_row) != abs(start_col - end_col):
             return False
         row_step = 1 if end_row > start_row else -1
@@ -160,6 +193,7 @@ class Player:
 
     def move(self, piece_from_position, piece_to_position):
         pass
+
 
 class Bot(Player):
     def __init__(self):
@@ -191,64 +225,54 @@ class Game(chess.Board):
         for r in range(8):
             for c in range(8):
                 color = colors[((r + c) % 2)]
-                pygame.draw.rect(screen, color,
-                                 pygame.Rect(c * square_size, r * square_size,
-                                             square_size, square_size))
+                pygame.draw.rect(
+                    screen,
+                    color,
+                    pygame.Rect(
+                        c * square_size,
+                        r * square_size,
+                        square_size, square_size))
         bot = Bot()
         player = Player()
-        br = Rook("black")
-        wr = Rook("white")
-        wp = Pawn("white")
-        bp = Pawn()
-        bk = King()
-        wk = King("white")
-        bb = Bishop()
-        wb = Bishop("white")
-        wq = Queen("white")
-        bq = Queen()
-        wk = Kinght("white")
-        bk = Kinght()
-        board = []
+        board = {}
+        white, black = "white", "black"
+        board[("a", "1")] = Rook(white)
+        board[("b", "1")] = Knight(white)
+        board[("c", "1")] = Bishop(white)
+        board[("d", "1")] = Queen(white)
+        board[("e", "1")] = King(white)
+        board[("f", "1")] = Bishop(white)
+        board[("g", "1")] = Kinght(white)
+        board[("h", "1")] = Rook(white)
+        for column in ("a", "b", "c", "d", "e", "f", "g", "h"):
+            board[(column, 2)] = Pawn(white)
+            board[(column, 7)] = Pawn(black)
+        board[("a", "8")] = Rook(black)
+        board[("b", "8")] = Knight(black)
+        board[("c", "8")] = Bishop(black)
+        board[("d", "8")] = Queen(black)
+        board[("e", "8")] = King(black)
+        board[("f", "8")] = Bishop(black)
+        board[("g", "8")] = Kinght(black)
+        board[("h", "8")] = Rook(black)
+        return cls(board, square_size, square_size, player, bot)
 
-        board.append(Rook("black"))
-        board.append(wr)
-        for _ in range(8):
-            board.append(Pawn("white"))
-            board.append(Pawn("black"))
-        #finish
-        board.append(bk)
-        board.append(wk)
-        board.append(bb)
-        board.append(wb)
-        board.append(wq)
-        board.append(bq)
-
-        return cls(board, square_size, square_size, bot)
-
-    def __init__(self, board, square_size, screen, bot):
+    def __init__(self, board, square_size, screen, player, bot):
         super().__init__()
         self.square_size = square_size
         self.screen = screen
+        self.player = player
         self.bot = bot
-        self.board = [
-            ['bR', 'bN', 'bB', 'bQ', 'bK', 'bB', 'bN', 'bR'],
-            ['bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp', 'bp'],
-            [None] * 8,
-            [None] * 8,
-            [None] * 8,
-            [None] * 8,
-            ['wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp', 'wp'],
-            ['wR', 'wN', 'wB', 'wQ', 'wK', 'wB', 'wN', 'wR']
-        ]
-        self.turn = "white"
-
+        self.board = board
+        self.is_human_turn = False
 
     def is_checkmate(self):
         pass
 
+
 def play_game():
     board = Game.build_game()
-    bot_turn = False
+    board.is_human_turn = not board.is_human_turn
     while not board.is_checkmate():
         # the code in here deals with the screen.
         # it contains no chess logic
