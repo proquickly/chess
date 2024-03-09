@@ -16,7 +16,7 @@ class Pawn(Piece):
     def __init__(self, color):
         super().__init__(color)
 
-    def is_valid_move(start_row, start_col, end_row, end_col, board):
+    def is_valid_move(start_square, end_square, board):
         moving_piece = board[start_row][start_col]
         destination_piece = board[end_row][end_col]
         if moving_piece is None:
@@ -219,6 +219,7 @@ class Game(chess.Board):
         player = Player()
         board = {}
         white, black = "white", "black"
+        all_columns = ("a", "b", "c", "d", "e", "f", "g", "h")
         board[("a", "1")] = Rook(white)
         board[("b", "1")] = Knight(white)
         board[("c", "1")] = Bishop(white)
@@ -227,7 +228,7 @@ class Game(chess.Board):
         board[("f", "1")] = Bishop(white)
         board[("g", "1")] = Knight(white)
         board[("h", "1")] = Rook(white)
-        for column in ("a", "b", "c", "d", "e", "f", "g", "h"):
+        for column in all_columns:
             board[(column, 2)] = Pawn(white)
             board[(column, 7)] = Pawn(black)
         board[("a", "8")] = Rook(black)
@@ -238,6 +239,9 @@ class Game(chess.Board):
         board[("f", "8")] = Bishop(black)
         board[("g", "8")] = Knight(black)
         board[("h", "8")] = Rook(black)
+        for row in range(3, 7):
+            for column in all_columns:
+                board[(column, row)] = None
         return cls(board, square_size, square_size, player, bot)
 
     def __init__(self, board, square_size, screen, player, bot):
@@ -251,6 +255,11 @@ class Game(chess.Board):
 
     def is_checkmate(self):
         pass
+
+    def is_square_empty(self, square):
+        if self.board[square] is None:
+            return True
+        return False
 
 
 def play_game():
