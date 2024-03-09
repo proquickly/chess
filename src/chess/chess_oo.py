@@ -1,8 +1,7 @@
 """pip install chess
 and make sure to rename your program chess to chess_p before running this"""
-import pygame
-import chess
 import chess.svg
+import pygame
 
 
 class Piece:
@@ -58,7 +57,6 @@ class King(Piece):
                 return False
         return abs(start_row - end_row) <= 1 and abs(start_col - end_col) <= 1
 
-    # encapsulation
     def _can_castle(self, king_side, color, board, king_moved, rook_moved):
         if king_moved[color]:
             return False
@@ -67,7 +65,7 @@ class King(Piece):
         if rook_moved[color][rook_key]:
             return False
         start, end = (4, rook_position) if rook_position > 4 else (
-        rook_position, 4)
+            rook_position, 4)
         for col in range(start + 1, end):
             if board[7 if color == 'w' else 0][col] is not None:
                 return False
@@ -78,8 +76,7 @@ class King(Piece):
 
     def castle(self):
         if self._can_castle():
-            pass
-        # etc
+            pass  # etc
 
 
 class Queen(Piece):
@@ -96,19 +93,9 @@ class Queen(Piece):
             destination_piece_color = destination_piece[0]
             if moving_piece_color == destination_piece_color:
                 return False
-        return (is_valid_rook_move(
-            start_row,
-            start_col,
-            end_row,
-            end_col,
-            board) or
-                is_valid_bishop_move(
-                    start_row,
-                    start_col,
-                    end_row,
-                    end_col,
-                    board)
-                )
+        return (is_valid_rook_move(start_row, start_col, end_row, end_col,
+            board) or is_valid_bishop_move(start_row, start_col, end_row,
+            end_col, board))
 
 
 class Knight(Piece):
@@ -127,8 +114,8 @@ class Knight(Piece):
                 return False
         return (abs(start_row - end_row) == 2 and abs(
             start_col - end_col) == 1) or (
-                    abs(start_row - end_row) == 1 and abs(
-                start_col - end_col) == 2)
+                abs(start_row - end_row) == 1 and abs(
+            start_col - end_col) == 2)
 
 
 class Rook(Piece):
@@ -225,13 +212,9 @@ class Game(chess.Board):
         for r in range(8):
             for c in range(8):
                 color = colors[((r + c) % 2)]
-                pygame.draw.rect(
-                    screen,
-                    color,
-                    pygame.Rect(
-                        c * square_size,
-                        r * square_size,
-                        square_size, square_size))
+                pygame.draw.rect(screen, color,
+                    pygame.Rect(c * square_size, r * square_size, square_size,
+                        square_size))
         bot = Bot()
         player = Player()
         board = {}
@@ -242,7 +225,7 @@ class Game(chess.Board):
         board[("d", "1")] = Queen(white)
         board[("e", "1")] = King(white)
         board[("f", "1")] = Bishop(white)
-        board[("g", "1")] = Kinght(white)
+        board[("g", "1")] = Knight(white)
         board[("h", "1")] = Rook(white)
         for column in ("a", "b", "c", "d", "e", "f", "g", "h"):
             board[(column, 2)] = Pawn(white)
@@ -253,7 +236,7 @@ class Game(chess.Board):
         board[("d", "8")] = Queen(black)
         board[("e", "8")] = King(black)
         board[("f", "8")] = Bishop(black)
-        board[("g", "8")] = Kinght(black)
+        board[("g", "8")] = Knight(black)
         board[("h", "8")] = Rook(black)
         return cls(board, square_size, square_size, player, bot)
 
@@ -281,8 +264,7 @@ def play_game():
             if event.type == pygame.QUIT:
                 exit(0)
             elif event.type == pygame.MOUSEBUTTONDOWN:
-                pass
-            # etc
+                pass  # etc
         pygame.display.flip()
 
     pygame.quit()
