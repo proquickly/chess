@@ -1,14 +1,16 @@
 [tool.poetry]
-name = "chess"
+name = "chess_oo"
 version = "0.1.0"
 description = ""
 authors = ["Andy Miles <akmiles@icloud.com>"]
 readme = "README.md"
-packages = [{include = "chess", from = "src"}]
+packages = [{include = "chess_oo", from = "src"}]
 
 [tool.poetry.dependencies]
 python = "^3.12"
 pygame = "^2.5.2"
+pytest = "^8.1.1"
+chess = "^1.10.0"
 
 
 [build-system]

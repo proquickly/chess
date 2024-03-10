@@ -1,6 +1,7 @@
 """pip install chess
-and make sure to rename your program chess to chess_p before running this"""
-import chess.svg
+and make sure to rename your program chess_oo to chess_p before running this"""
+
+import chess
 import pygame
 
 
@@ -267,8 +268,8 @@ def play_game():
     board.is_human_turn = not board.is_human_turn
     while not board.is_checkmate():
         # the code in here deals with the screen.
-        # it contains no chess logic
-        # chess logic comes from the Game class
+        # it contains no chess_oo logic
+        # chess_oo logic comes from the Game class
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 exit(0)
