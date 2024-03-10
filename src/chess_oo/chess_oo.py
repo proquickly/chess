@@ -9,7 +9,7 @@ class Piece:
     def __init__(self, color):
         self.color = color
 
-    def is_valid_move(self):
+    def is_valid_move(self, start_square, end_square):
         pass
 
 
@@ -17,29 +17,26 @@ class Pawn(Piece):
     def __init__(self, color):
         super().__init__(color)
 
-    def is_valid_move(start_square, end_square, board):
-        moving_piece = board[start_row][start_col]
-        destination_piece = board[end_row][end_col]
-        if moving_piece is None:
-            return False
-        moving_piece_color = moving_piece[0]
-        if destination_piece is not None:
-            destination_piece_color = destination_piece[0]
-            if moving_piece_color == destination_piece_color:
-                return False
-        direction = -1 if self.color == 'w' else 1
-        if start_col == end_col and board[end_row][end_col] is None:
-            if (end_row - start_row) == direction:
-                return True
-            if start_row == (6 if self.color == 'w' else 1) and (
-                    end_row - start_row) == 2 * direction and \
-                    board[start_row + direction][start_col] is None:
-                return True
-        elif abs(start_col - end_col) == 1 and (
-                end_row - start_row) == direction and board[end_row][
-            end_col] is not None and board[end_row][end_col][0] != self.color:
+    def _is_on_same_row(self, end_row, start_row):
+        if end_row == start_row:
             return True
         return False
+
+    def _get_number_rows_moving(self, start_square, end_square):
+        return int(end_square[1]) - int(start_square[1])
+
+    def is_valid_move(self, start_square, end_square):
+        # does not handle taking (moving diagonally) yet
+        if not self._is_on_same_row(end_square[0], start_square[0]):
+            return False
+
+        if start_square[1] == 2:
+            if self._get_number_rows_moving(start_square, end_square) > 2:
+                return False
+        else:
+            if self._get_number_rows_moving(start_square, end_square) > 1:
+                return False
+        return True
 
 
 class King(Piece):
