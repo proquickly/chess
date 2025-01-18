@@ -79,6 +79,7 @@ def run_query(query: str):
 def main():
     if RELOAD_DB:
         results = query_source_data_inline()
+        # results = query_source_data()
         load_data(results)
     questions = [
         "what is a good",
