@@ -663,5 +663,5 @@ def play_game():
 
 
 if __name__ == '__main__':
-    chess_p.play_game()
+    play_game()
 #TODO:make a test for checking the mouse pos and figure out how to convert the xy (pixels) coordinates to squares
