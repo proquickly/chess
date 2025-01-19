@@ -32,7 +32,7 @@ def generate_embedding(text):
 
 
 def query_source_data():
-    with open("data/rules.txt") as f:
+    with open("data/chroma.db/info.txt") as f:
         content = f.read()
     chess_moves = content.split("\n")
     return [re.sub(' +', ' ', chess_move.replace("\n", "")) for chess_move in chess_moves]
@@ -78,8 +78,8 @@ def run_query(query: str):
 
 def main():
     if RELOAD_DB:
-        results = query_source_data_inline()
-        # results = query_source_data()
+        #results = query_source_data_inline()
+        results = query_source_data()
         load_data(results)
     questions = [
         "what is a good",
