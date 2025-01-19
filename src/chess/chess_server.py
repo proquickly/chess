@@ -1,20 +1,18 @@
 """pip install chess
 and make sure to rename your program chess to chess_p before running this"""
-import pygame
-import chess
-import chess.svg
+# import pygame
+# import chess
+# import chess.svg
 import pprint
 from loguru import logger
 import pysnooper
 
 print = pprint.pprint
 import functools
-import multiprocessing
 import time
 import multiprocessing
 import random
-import pysnooper
-import chess_p
+
 
 
 def timer(func):
@@ -665,5 +663,5 @@ def play_game():
 
 
 if __name__ == '__main__':
-    chess_p.play_game()
+    play_game()
 #TODO:make a test for checking the mouse pos and figure out how to convert the xy (pixels) coordinates to squares
