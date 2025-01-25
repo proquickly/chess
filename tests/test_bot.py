@@ -1,4 +1,3 @@
-import pytest
 from chess.bot import Bot, evaluate_board, piece_value
 
 
