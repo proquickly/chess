@@ -4,6 +4,8 @@ import random
 def evaluate_board(board, color):
     value = 0
     for position, piece in board.items():
+        if piece is None:
+            continue
         multiplier = 1 if piece.color == color else -1
         value += multiplier * piece_value(piece)
     return value
