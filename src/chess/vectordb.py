@@ -32,7 +32,7 @@ def generate_embedding(text):
 
 
 def query_source_data():
-    with open("data/chroma.db/info.txt") as f:
+    with open("data/info.txt") as f:
         content = f.read()
     chess_moves = content.split("\n")
     return [re.sub(' +', ' ', chess_move.replace("\n", "")) for chess_move in chess_moves]

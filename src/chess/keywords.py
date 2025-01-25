@@ -47,7 +47,7 @@ def get_labels():
 def apply_labels(labels):
     new_documents = []
 
-    with open("data\chroma.db\info.txt", 'r', encoding='utf-8') as file:
+    with open("data\info.txt", 'r', encoding='utf-8') as file:
         document = file.readlines()
     documents = [move.strip().lower() for move in document if move.strip()]
     
