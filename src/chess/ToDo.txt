@@ -1,0 +1,33 @@
+GENERAL / ARCHITECTURE
+Unify or refactor the “Bot” logic (avoid duplication between bot.py and chess_server.py)
+Standardize board representation (dictionary vs. 2D array)
+Resolve 0-based vs. 1-based indexing inconsistencies
+BOT.PY
+Add handling for special moves (castling, en passant, promotion)
+Refine the evaluation function (currently only material-based)
+Integrate the bot logic more closely with the main game (avoid isolated code)
+CHESS_CLIENT.PY
+Implement the menu logic fully (Play, Ask AI, Maintain data, Exit)
+Hook up user input to actual functions in chess_server.py (or elsewhere)
+Provide user feedback and error handling for invalid inputs
+CHESS_SERVER.PY
+Finish King logic (two separate get_legal_moves methods, incomplete castling checks)
+Implement is_checkmate (currently a placeholder)
+Clean up castling checks to ensure squares are not attacked
+Resolve repeated or conflicting Bot logic (there is also a Bot class in bot.py)
+Finalize the Game class (currently references pygame, partial UI code)
+KEYWORDS.PY
+Decide whether to generate and use chessboard coordinates (commented-out code)
+Ensure data/info.txt is handled safely (file might be missing)
+Potentially integrate directly with vectordb.py for consistent data flow
+VECTORDB.PY
+Clarify usage of RELOAD_DB (maybe a config option instead of a hardcoded True/False)
+Potentially store structured chess data (FEN, PGN, etc.) rather than just raw lines
+Consider adding more metadata (move number, color, etc.) to documents
+Decide on the purpose of main() (currently just a demo)
+ADDITIONAL ENHANCEMENTS (OPTIONAL)
+Write unit tests (e.g., pytest) for movement logic, checkmate detection, vector DB queries
+Replace print statements with a logging library for easier debugging
+Expand documentation or create a README to explain code structure
+Create a requirements.txt (or pyproject.toml) with dependencies (pygame, loguru, pysnooper, chromadb, transformers, etc.)
+Improve error handling (inform users if a move is invalid, file is missing, etc.)
