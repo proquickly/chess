@@ -6,14 +6,24 @@ from chromadb.config import Settings
 import json
 from transformers import AutoTokenizer, AutoModel
 import torch
+import os
 
-RELOAD_DB = True
+RELOAD_DB = False
 
-chroma_client = chromadb.PersistentClient(path="data/chroma.db",
-                                          settings=Settings(
-                                              anonymized_telemetry=False
-                                          )
-                                          )
+# 1) Get the absolute directory containing this script (vectordb.py).
+current_dir = os.path.dirname(os.path.abspath(__file__))
+
+# 2) Build a path two levels up (.., ..) into data/, then chroma.db.
+db_path = os.path.join(current_dir, "..", "..", "data", "chroma.db")
+
+# 3) Initialize the PersistentClient with the absolute path.
+chroma_client = chromadb.PersistentClient(
+    path=db_path,
+    settings=Settings(
+        anonymized_telemetry=False
+    )
+)
+
 collection = chroma_client.get_or_create_collection(name="chess")
 
 tokenizer = AutoTokenizer.from_pretrained(
@@ -31,9 +41,23 @@ def generate_embedding(text):
     return embedding
 
 
+import os
+import re
+
+
 def query_source_data():
-    with open("data/info.txt") as f:
+    # Get the absolute directory where this file (vectordb.py) is located
+    current_dir = os.path.dirname(os.path.abspath(__file__))
+
+    # Navigate two levels up to reach the main "chess" folder, then go into "data/info.txt"
+    info_path = os.path.join(current_dir, "..", "..", "data", "info.txt")
+
+    # For debugging, print out the path to ensure it's correct
+    print("Loading info from:", info_path)
+
+    with open(info_path, "r", encoding="utf-8") as f:
         content = f.read()
+
     chess_moves = content.split("\n")
     return [re.sub(' +', ' ', chess_move.replace("\n", "")) for chess_move in chess_moves]
 
