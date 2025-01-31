@@ -1,21 +1,16 @@
-"""pip install chess
-and make sure to rename your program chess to chess_p before running this"""
-# import pygame
-# import chess
-# import chess.svg
+import os
 import pprint
-from loguru import logger
-import pysnooper
-
-print = pprint.pprint
 import functools
 import time
 import multiprocessing
 import random
+import pygame
 
+pp = pprint.pprint
 
 
 def timer(func):
+    """Decorator to measure the execution time of a function."""
     @functools.wraps(func)
     def wrapper_timer(*args, **kwargs):
         start_time = time.perf_counter()
@@ -24,592 +19,535 @@ def timer(func):
         run_time = end_time - start_time
         print(f"Ran {func.__name__!r} in {run_time:.4f} secs")
         return value
-
     return wrapper_timer
 
 
+# -------------------------------------------------------------------------
+#                            PIECE CLASSES
+# -------------------------------------------------------------------------
+
 class Piece:
+    """Base chess Piece class with helper movement methods."""
     def __init__(self, color):
         self.color = color
 
-    def can_move_along_row(self, start_row, start_col, end_row, end_col,
-                           board):
+
+    def can_move_along_row(start_row, start_col, end_row, end_col, board):
+        """Checks if a move is along a row."""
         return start_row == end_row
 
-    def can_move_along_col(self, start_row, start_col, end_row, end_col,
-                           board):
+    def can_move_along_col(self, start_row, start_col, end_row, end_col, board):
+        """Checks if a move is along a column."""
         return start_col == end_col
 
-    def can_move_along_diagonal(self, start_row, start_col, end_row, end_col,
-                                board):
+    def can_move_along_diagonal(self, start_row, start_col, end_row, end_col, board):
+        """Checks if a move is along a diagonal."""
         return abs(start_row - end_row) == abs(start_col - end_col)
 
     def get_legal_moves(self, position, board):
-        pass
-    #FIXME: make for the king
+        """Return all legal moves for this piece. Subclasses must override."""
+        raise NotImplementedError("Subclasses should implement get_legal_moves.")
 
 
 class Pawn(Piece):
+    """Pawn piece implementation."""
+
     def __init__(self, color):
-        self.color = color
+        super().__init__(color)
 
     def is_valid_move(self, start_row, start_col, end_row, end_col, board):
+        """
+        Check if a given move is valid for a Pawn (ignoring check/checkmate rules).
+        Currently unused in final logic but provided as an example.
+        """
         moving_piece = board[start_row][start_col]
-        destination_piece = board[end_row][end_col]
         if moving_piece is None:
             return False
-        moving_piece_color = moving_piece[0]
+
+        destination_piece = board[end_row][end_col]
+        moving_piece_color = moving_piece[0] if moving_piece else None
         if destination_piece is not None:
             destination_piece_color = destination_piece[0]
+            # Cannot capture your own piece
             if moving_piece_color == destination_piece_color:
                 return False
-        direction = -1 if self.color == 'w' else 1
+
+        direction = -1 if self.color == 'w' else 1  # White up, black down if row=0 is top
+
+        # Normal forward move
         if start_col == end_col and board[end_row][end_col] is None:
             if (end_row - start_row) == direction:
                 return True
-            if start_row == (6 if self.color == 'w' else 1) and (
-                    end_row - start_row) == 2 * direction and \
-                    board[start_row + direction][start_col] is None:
+            # Double move from starting rank
+            if start_row == (6 if self.color == 'w' else 1):
+                if (end_row - start_row) == 2 * direction and board[start_row + direction][start_col] is None:
+                    return True
+
+        # Capture moves
+        if abs(start_col - end_col) == 1 and (end_row - start_row) == direction:
+            if board[end_row][end_col] is not None and board[end_row][end_col][0] != self.color:
                 return True
-        elif abs(start_col - end_col) == 1 and (
-                end_row - start_row) == direction and board[end_row][
-            end_col] is not None and board[end_row][end_col][0] != self.color:
-            return True
+
         return False
 
     def get_legal_moves(self, position, board):
+        """
+        Return all possible legal moves (row, col) for this Pawn from `position`,
+        given a dict-based board: {(row, col): pieceObject, ...}.
+        White Pawns move "down" the board if row=0 is top (direction +1).
+        Black Pawns move "up" the board if row=7 is bottom (direction -1).
+        """
         moves = []
         x, y = position
 
         if self.color == 'white':
-            # Move forward
+            # Move forward 1
             if x + 1 <= 7 and board.get((x + 1, y)) is None:
                 moves.append((x + 1, y))
-                # Check for the initial double move
+                # Initial double move
                 if x == 1 and board.get((x + 2, y)) is None:
                     moves.append((x + 2, y))
-            # Captures
-            for dx in [-1, 1]:
-                if 0 <= y + dx <= 7 and board.get(
-                        (x + 1, y + dx)) and board.get(
-                        (x + 1, y + dx)).color != self.color:
-                    moves.append((x + 1, y + dx))
-        elif self.color == 'black':
-            # Move forward
+
+            # Captures (diagonally forward)
+            for dy in [-1, 1]:
+                nx, ny = x + 1, y + dy
+                if 0 <= nx < 8 and 0 <= ny < 8:
+                    target = board.get((nx, ny))
+                    if target and target.color != self.color:
+                        moves.append((nx, ny))
+
+        else:  # black
+            # Move forward 1
             if x - 1 >= 0 and board.get((x - 1, y)) is None:
                 moves.append((x - 1, y))
-                # Check for the initial double move
+                # Initial double move
                 if x == 6 and board.get((x - 2, y)) is None:
                     moves.append((x - 2, y))
-            # Captures
-            for dx in [-1, 1]:
-                if 0 <= y + dx <= 7 and board.get(
-                        (x - 1, y + dx)) and board.get(
-                        (x - 1, y + dx)).color != self.color:
-                    moves.append((x - 1, y + dx))
+
+            # Captures (diagonally forward)
+            for dy in [-1, 1]:
+                nx, ny = x - 1, y + dy
+                if 0 <= nx < 8 and 0 <= ny < 8:
+                    target = board.get((nx, ny))
+                    if target and target.color != self.color:
+                        moves.append((nx, ny))
 
         return moves
 
 
 class King(Piece):
+    """King piece implementation."""
+
     def __init__(self, color):
         super().__init__(color)
         self.has_moved = False
 
     def get_legal_moves(self, position, board):
+        """
+        Return all possible legal moves for this King, including castling if possible.
+        """
         moves = []
         x, y = position
-        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1),
-                      (1, 0), (1, 1)]
 
+        # Normal king moves (one square in any direction)
+        directions = [
+            (-1, -1), (-1, 0), (-1, 1),
+            (0, -1),           (0, 1),
+            (1, -1),  (1, 0),  (1, 1)
+        ]
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             if 0 <= nx < 8 and 0 <= ny < 8:
-                if board.get((nx, ny)) is None or board.get(
-                        (nx, ny)).color != self.color:
+                occupant = board.get((nx, ny))
+                if occupant is None or occupant.color != self.color:
                     moves.append((nx, ny))
 
+        # Castling checks
         if not self.has_moved:
             if self._can_castle_kingside(position, board):
                 moves.append((x, y + 2))
-                print(f"Adding kingside castling move {(x, y + 2)}")
             if self._can_castle_queenside(position, board):
                 moves.append((x, y - 2))
-                print(f"Adding queenside castling move {(x, y - 2)}")
 
-        print(f"King at {position} legal moves: {moves}")
         return moves
 
     def _can_castle_kingside(self, position, board):
         x, y = position
+        # Rook is at (x, 7)
         rook = board.get((x, 7))
-        print(
-            f"Checking kingside castling for King at {position}, Rook at {(x, 7)}: {rook}")
-        if isinstance(rook, Rook) and not rook.has_moved:
-            if all(board.get((x, col)) is None for col in range(y + 1, 7)):
-                if self._is_path_safe_for_castling((x, y), (x, 7), board):
-                    print(
-                        f"Kingside castling is possible for King at {position}")
-                    return True
-        return False
+        if not isinstance(rook, Rook) or rook.has_moved:
+            return False
+        # Squares between y+1..6 must be empty
+        for col in range(y + 1, 7):
+            if board.get((x, col)) is not None:
+                return False
+        # Check path safety
+        return self._is_path_safe_for_castling((x, y), (x, 7), board)
 
     def _can_castle_queenside(self, position, board):
         x, y = position
+        # Rook is at (x, 0)
         rook = board.get((x, 0))
-        print(
-            f"Checking queenside castling for King at {position}, Rook at {(x, 0)}: {rook}")
-        if isinstance(rook, Rook) and not rook.has_moved:
-            if all(board.get((x, col)) is None for col in range(1, y)):
-                if self._is_path_safe_for_castling((x, y), (x, 0), board):
-                    print(
-                        
-                        f"Queenside castling is possible for King at {position}")
-                    return True
-        return False
+        if not isinstance(rook, Rook) or rook.has_moved:
+            return False
+        # Squares between 1..(y-1) must be empty
+        for col in range(1, y):
+            if board.get((x, col)) is not None:
+                return False
+        # Check path safety
+        return self._is_path_safe_for_castling((x, y), (x, 0), board)
 
     def _is_path_safe_for_castling(self, from_position, to_position, board):
+        """
+        Ensure the King does not pass through or end on attacked squares.
+        """
         x, y = from_position
         step = 1 if y < to_position[1] else -1
-
-        for col in range(y + step, to_position[1], step):
+        for col in range(y, to_position[1] + step, step):
             if self._is_square_attacked((x, col), board):
-                print(
-                    f"Square {(x, col)} is under attack, castling not possible")
                 return False
         return True
 
     def _is_square_attacked(self, position, board):
-        for piece_position, piece in board.items():
+        """Check if `position` is attacked by any opponent piece."""
+        for piece_pos, piece in board.items():
             if piece.color != self.color:
-                if position in piece.get_legal_moves(piece_position, board):
-                    print(
-                        f"Square {position} is attacked by {piece} at {piece_position}")
+                if position in piece.get_legal_moves(piece_pos, board):
                     return True
         return False
 
 
-    def get_legal_moves(self, position, board):#FIXME:
-        moves = []
-        x, y = position
-        if not self.has_moved:
-            if self.color == "black":
-                # Kingside castling (assuming right side rook is at (x, 7)) + add private functions!!!!
-                #"_unknown1() == True" check if it can return true
-                if self.check_if_in_the_right_position_kingside() and self._check_if_under_attack():
-                    rook = board.get((x, 7))
-                    if rook and isinstance(rook, Rook) and not rook.has_moved:
-                        moves.append((x, y + 2))
-                        print(f"Adding kingside castling move {(x, y + 2)}")
-
-                # Queenside castling (assuming left side rook is at (x, 0))
-                if all(board.get((x, col)) is None for col in range(1, y)) and \
-                    not any(self._is_square_attacked((x, col), board) for col in range(y - 2, y + 1)):
-                    rook = board.get((x, 0))
-                    if rook and isinstance(rook, Rook) and not rook.has_moved:
-                        moves.append((x, y - 2))
-                        print(f"Adding queenside castling move {(x, y - 2)}")
-            elif self.color == "white":
-                    pass
-
-        return moves
-
-
-
-
 class Queen(Piece):
+    """Queen piece (Rook + Bishop movement)."""
+
     def __init__(self, color):
-        self.color = color
-
-    def is_valid_move(self, at, to):
-        row_start, col_start = at
-        row_end, col_end = to
-
-        if not (row_start == row_end or col_start == col_end or
-                abs(row_end - row_start) == abs(col_end - col_start)):
-            return False
-
-        row_step = (row_end - row_start) // max(abs(row_end - row_start), 1)
-        col_step = (col_end - col_start) // max(abs(col_end - col_start), 1)
-
-        current_row, current_col = row_start, col_start
-        while (current_row, current_col) != (row_end, col_end):
-            current_row += row_step
-            current_col += col_step
-            if (current_row, current_col) == (row_end, col_end):
-                break
-            if not self._check_piece_presence((current_row, current_col)):
-                return False
-
-        return True
-
-    def _check_piece_presence(self, position):
-
-        row, col = position
-        if 0 <= row < 8 and 0 <= col < 8:
-            return True
-        return False
+        super().__init__(color)
 
     def get_legal_moves(self, position, board):
-        board_size = 8
         moves = []
-        directions = [(-1, -1), (-1, 0), (-1, 1), (0, -1), (0, 1), (1, -1),
-                      (1, 0), (1, 1)]
-
-        #diognal moves
-        for dx, dy in directions:
-            x, y = position
-            while True:
-                x += dx
-                y += dy
-                if 0 <= x < board_size and 0 <= y < board_size:
-                    if board.get((x, y)) is not None:
-                        if board.get((x, y)).color != self.color:
-                            moves.append((x, y))
-                        break
-
-                    moves.append((x, y))
-                else:
-                    break
-
-                    #horizontal and vertical moves
-
-        directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-
+        x, y = position
+        directions = [
+            (-1, -1), (-1, 0), (-1, 1),
+            (0, -1),           (0, 1),
+            (1, -1),  (1, 0),  (1, 1)
+        ]
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             while 0 <= nx < 8 and 0 <= ny < 8:
-                if board.get((nx, ny)) is None:
+                occupant = board.get((nx, ny))
+                if occupant is None:
                     moves.append((nx, ny))
-                elif board((nx, ny)).color != self.color:
-                    moves.append((nx, ny))
-                    break
                 else:
+                    if occupant.color != self.color:
+                        moves.append((nx, ny))
                     break
                 nx += dx
                 ny += dy
-
         return moves
 
 
-"""        for dx, dy in directions:
-            nx, ny = x + dx, y + dy
-            while 0 <= nx < 8 and 0 <= ny < 8:
-                if board.get((nx, ny)) is None:
-                    moves.append((nx, ny))
-                elif board.get((nx, ny)).color != self.color:
-                    moves.append((nx, ny))
-                    break
-                else:
-                    break
-
-                nx += dx
-                ny += dy"""
-
-
 class Knight(Piece):
-    def __init__(self, color):
-        self.color = color
+    """Knight piece implementation."""
 
-    def is_valid_move(self, at, to):
-        deltas = [(-2, -1), (-2, +1), (+2, -1), (+2, +1), (-1, -2), (-1, +2),
-                  (+1, -2), (+1, +2)]
-        valid_to_positions = []
-        for row, column in deltas:
-            row_candidate = at[0] + row
-            column_candidate = at[1] + column
-            if 0 < row_candidate <= 8 and 0 < column_candidate <= 8:
-                valid_to_positions.append((row_candidate, column_candidate))
-        return to in valid_to_positions
+    def __init__(self, color):
+        super().__init__(color)
 
     def get_legal_moves(self, position, board):
         moves = []
         x, y = position
-        steps = [(-2, -1), (-1, -2), (1, -2), (2, -1), (2, 1), (1, 2), (-1, 2),
-                 (-2, 1)]
-        for dx, dy in steps:
+        candidates = [
+            (-2, -1), (-2, +1),
+            (+2, -1), (+2, +1),
+            (-1, -2), (-1, +2),
+            (+1, -2), (+1, +2)
+        ]
+        for dx, dy in candidates:
             nx, ny = x + dx, y + dy
             if 0 <= nx < 8 and 0 <= ny < 8:
-                if board.get((nx, ny), None) is None or board[
-                    (nx, ny)].color != 'white':
+                occupant = board.get((nx, ny))
+                if occupant is None or occupant.color != self.color:
                     moves.append((nx, ny))
         return moves
 
 
 class Rook(Piece):
+    """Rook piece implementation."""
+
     def __init__(self, color):
-        self.color = color
+        super().__init__(color)
         self.has_moved = False
-
-    def _is_destination_empty(self, destination_place):
-        return destination_place is None
-
-    def is_valid_move(self, at, to):
-        if at[0] != to[0] and at[1] != to[1]:
-            return False
-
-        if at[0] == to[0]:
-            direction = 1 if to[1] > at[1] else -1
-            for x in range(at[1] + direction, to[1], direction):
-                if self._check_piece_presence((at[0], x)):
-                    return False
-        else:
-            direction = 1 if to[0] > at[0] else -1
-            for x in range(at[0] + direction, to[0], direction):
-                if self._check_piece_presence((x, at[1])):
-                    return False
-        return True
 
     def get_legal_moves(self, position, board):
         moves = []
         x, y = position
         directions = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-
         for dx, dy in directions:
             nx, ny = x + dx, y + dy
             while 0 <= nx < 8 and 0 <= ny < 8:
-                if board.get((nx, ny)) is None:
+                occupant = board.get((nx, ny))
+                if occupant is None:
                     moves.append((nx, ny))
-                elif board.get(
-                        (nx, ny)).color != self.color:  # get was missing
-                    moves.append((nx, ny))
-                    break
                 else:
+                    if occupant.color != self.color:
+                        moves.append((nx, ny))
                     break
                 nx += dx
                 ny += dy
-
         return moves
-
-    def _check_piece_presence(self, position, board):
-        x, y = position
-        return 0 <= x < 8 and 0 <= y < 8 and board[x][y] is not None
 
 
 class Bishop(Piece):
+    """Bishop piece implementation."""
+
     def __init__(self, color):
         super().__init__(color)
 
-    def is_valid_move(self, at, to):
-        start_row, start_col = at
-        end_row, end_col = to
-        if self.can_move_along_diagonal(start_row, start_col, end_row, end_col,
-                                        None):
-            return self._is_valid_diagonal_move(start_row, start_col, end_row,
-                                                end_col, None)
-        else:
-            return False
-
-    def _is_valid_diagonal_move(self, start_row, start_col, end_row, end_col,
-                                board):
-        row_step = 1 if end_row > start_row else -1
-        col_step = 1 if end_col > start_col else -1
-
-        current_row, current_col = start_row + row_step, start_col + col_step
-        while (current_row, current_col) != (end_row, end_col):
-            if board is not None and board[current_row][
-                current_col] is not None:
-                return False
-            current_row += row_step
-            current_col += col_step
-
-        return True
-
-    def _check_piece_presence(self, position):
-        row, col = position
-        if 0 <= row < 8 and 0 <= col < 8:
-            return True
-        return False
-
     def get_legal_moves(self, position, board):
-        board_size = 8
-        directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
         moves = []
-
+        x, y = position
+        directions = [(-1, -1), (-1, 1), (1, -1), (1, 1)]
         for dx, dy in directions:
-            x, y = position
-            while True:
-                x += dx
-                y += dy
-                if 0 <= x < board_size and 0 <= y < board_size:
-                    if board.get((x, y)) is not None:
-                        if board.get((x, y)).color != self.color:
-                            moves.append((x, y))
-                        break
-
-                    moves.append((x, y))
+            nx, ny = x + dx, y + dy
+            while 0 <= nx < 8 and 0 <= ny < 8:
+                occupant = board.get((nx, ny))
+                if occupant is None:
+                    moves.append((nx, ny))
                 else:
+                    if occupant.color != self.color:
+                        moves.append((nx, ny))
                     break
-
+                nx += dx
+                ny += dy
         return moves
 
 
+# -------------------------------------------------------------------------
+#                             PLAYER CLASSES
+# -------------------------------------------------------------------------
+
 class Player:
+    """Generic Player class."""
+
     def __init__(self):
         self.is_my_turn = None
 
     def move(self, piece_from_position, piece_to_position):
+        """Placeholder for future expansions."""
         pass
 
 
 def get_piece_value(piece):
-    values = {'Pawn': 1, 'Knight': 3, 'Bishop': 3, 'Rook': 5, 'Queen': 9,
-              'King': 1000}
+    """
+    Quick evaluation heuristic:
+    Pawn=1, Knight=3, Bishop=3, Rook=5, Queen=9, King=1000
+    """
+    values = {
+        'Pawn': 1,
+        'Knight': 3,
+        'Bishop': 3,
+        'Rook': 5,
+        'Queen': 9,
+        'King': 1000
+    }
     return values.get(type(piece).__name__, 0)
 
 
 class Bot(Player):
+    """
+    Example Bot class that selects a move by:
+      1. Looking for the highest-value capture.
+      2. Otherwise picking a random move.
+    """
+
     def __init__(self, color):
+        super().__init__()
         self.color = color
 
     def get_possible_bot_moves(self, board):
+        """
+        Return all possible moves [(start_pos, end_pos), ...] for this Bot's color.
+        Uses multiprocessing to gather legal moves in parallel.
+        """
         manager = multiprocessing.Manager()
         possible_moves = manager.list()
-
         processes = []
+
         for row in range(8):
             for col in range(8):
                 piece = board.get((row, col))
-                if piece is not None and piece.color == self.color:
-                    print(f"Processing piece {piece} at {(row, col)}")
-                    process = multiprocessing.Process(
+                if piece and piece.color == self.color:
+                    proc = multiprocessing.Process(
                         target=self.get_legal_moves_worker,
-                        args=((row, col), board, possible_moves))
-                    processes.append(process)
-                    process.start()
+                        args=((row, col), board, possible_moves)
+                    )
+                    processes.append(proc)
+                    proc.start()
 
-        for process in processes:
-            process.join()
+        for proc in processes:
+            proc.join()
 
-        print(f"Possible bot moves: {list(possible_moves)}")
         return list(possible_moves)
 
     def get_legal_moves_worker(self, position, board, possible_moves):
+        """Worker process to get all legal moves for the piece at `position`."""
         piece = board[position]
-        if piece is not None:
+        if piece:
             legal_moves = piece.get_legal_moves(position, board)
-            print(
-                f"Legal moves for piece {piece} at {position}: {legal_moves}")
             for move in legal_moves:
                 possible_moves.append((position, move))
 
-    #@pysnooper.snoop("pysnooper.txt")
     def select_move(self, moves, game):
+        """
+        From the list of possible moves, pick the one that captures the
+        most valuable piece. If no captures are available, pick randomly.
+        """
         best_move = None
         highest_capture_value = 0
-        for move in moves:
-            start_pos, end_pos = move
+
+        for (start_pos, end_pos) in moves:
             target_piece = game.board.get(end_pos)
             if target_piece and target_piece.color != self.color:
+                # Evaluate the capture
                 target_value = get_piece_value(target_piece)
                 if target_value > highest_capture_value:
                     highest_capture_value = target_value
-                    best_move = move[1]
-                    print(f"currently the best move is {best_move}")
+                    best_move = (start_pos, end_pos)
 
-        if not best_move:
+        if not best_move and moves:
             best_move = random.choice(moves)
-        print(f"selected move {best_move} from game")
 
         return best_move
 
-    @pysnooper.snoop()
     def make_move(self, game, move):
+        """Execute the chosen move on the `game` board."""
+        if not move:
+            return
         start_pos, end_pos = move
-        start_piece = game.board[start_pos]
-        game.board[start_pos] = None
-        game.board[end_pos] = start_piece
-        game.move_piece(start_pos, end_pos)
+        piece = game.board.get(start_pos)
+        if piece:
+            game.board[start_pos] = None
+            game.board[end_pos] = piece
+            game.move_piece(start_pos, end_pos)
 
     def play_turn(self, game):
+        """Perform this Bot's turn."""
         possible_moves = self.get_possible_bot_moves(game.board)
         selected_move = self.select_move(possible_moves, game)
         self.make_move(game, selected_move)
 
 
+# -------------------------------------------------------------------------
+#                                GAME CLASS
+# -------------------------------------------------------------------------
+
 class Game:
+    """Main Game class to store board, pieces, and handle moves/drawing."""
+
     @classmethod
     def build_game(cls):
+        """
+        Create a Game object with an 8x8 board, place pieces for both sides,
+        initialize PyGame screen, etc.
+        """
         square_size = 60
         width, height = square_size * 8, square_size * 8
         screen = pygame.display.set_mode((width, height))
-        colors = [(233, 236, 239), (125, 135, 150)]
-        for r in range(8):
-            for c in range(8):
-                color = colors[((r + c) % 2)]
-                pygame.draw.rect(screen, color,
-                                 pygame.Rect(c * square_size, r * square_size,
-                                             square_size, square_size))
-        bot = Bot("black")
-        player = Player()
-        board = {}
-        for row, color in enumerate(("white", "black")):
-            if row == 0:
-                row = 1
-            else:
-                row = 8
-            board = {**board, **{
-                (row, 1): Rook(color),
-                (row, 2): Knight(color),
-                (row, 3): Bishop(color),
-                (row, 4): Queen(color),
-                (row, 5): King(color),
-                (row, 6): Bishop(color),
-                (row, 7): Knight(color),
-                (row, 8): Rook(color),
 
-            }}
-        for column in range(1, 9):
-            board[(2, column)] = Pawn("white")
-            board[(7, column)] = Pawn("black")
+        # Initialize a dictionary-based board
+        board = {}
+
+        # -------------------------
+        # Place White pieces (row=0) & White pawns (row=1)
+        # R  N  B  Q  K  B  N  R
+        board[(0, 0)] = Rook("white")
+        board[(0, 1)] = Knight("white")
+        board[(0, 2)] = Bishop("white")
+        board[(0, 3)] = Queen("white")
+        board[(0, 4)] = King("white")
+        board[(0, 5)] = Bishop("white")
+        board[(0, 6)] = Knight("white")
+        board[(0, 7)] = Rook("white")
+
+        for col in range(8):
+            board[(1, col)] = Pawn("white")
+
+        # -------------------------
+        # Place Black pieces (row=7) & Black pawns (row=6)
+        board[(7, 0)] = Rook("black")
+        board[(7, 1)] = Knight("black")
+        board[(7, 2)] = Bishop("black")
+        board[(7, 3)] = Queen("black")
+        board[(7, 4)] = King("black")
+        board[(7, 5)] = Bishop("black")
+        board[(7, 6)] = Knight("black")
+        board[(7, 7)] = Rook("black")
+
+        for col in range(8):
+            board[(6, col)] = Pawn("black")
+
+        bot = Bot("black")
         return cls(board, square_size, screen, bot)
 
-    def convert_object_to_display(self, piece):
-        return self.display_pieces[piece]
-
     def __init__(self, board, square_size, screen, bot):
+        self.board = board
         self.square_size = square_size
         self.screen = screen
         self.bot = bot
-        self.board = board
-        self.turn = "white"
-        self.display_pieces = {
-            self.board[(8, 1)]: 'bR',
-            self.board[(8, 2)]: 'bN',
-            self.board[(8, 3)]: 'bB',
-            self.board[(8, 4)]: 'bQ',
-            self.board[(8, 5)]: 'bK',
-            self.board[(8, 6)]: 'bB',
-            self.board[(8, 7)]: 'bN',
-            self.board[(8, 8)]: 'bR',
-            self.board[(7, 1)]: 'bp',
-            self.board[(7, 2)]: 'bp',
-            self.board[(7, 3)]: 'bp',
-            self.board[(7, 4)]: 'bp',
-            self.board[(7, 5)]: 'bp',
-            self.board[(7, 6)]: 'bp',
-            self.board[(7, 7)]: 'bp',
-            self.board[(7, 8)]: 'bp',
-            self.board[(1, 1)]: 'bR',
-            self.board[(1, 2)]: 'bN',
-            self.board[(1, 3)]: 'bB',
-            self.board[(1, 4)]: 'bQ',
-            self.board[(1, 5)]: 'bK',
-            self.board[(1, 6)]: 'bB',
-            self.board[(1, 7)]: 'bN',
-            self.board[(1, 8)]: 'bR',
-            self.board[(2, 1)]: 'bp',
-            self.board[(2, 2)]: 'bp',
-            self.board[(2, 3)]: 'bp',
-            self.board[(2, 4)]: 'bp',
-            self.board[(2, 5)]: 'bp',
-            self.board[(2, 6)]: 'bp',
-            self.board[(2, 7)]: 'bp',
-            self.board[(2, 8)]: 'bp',
+        self.turn = "white"  # White moves first
+
+        # Map from piece objects to piece codes for loading images
+        self.display_pieces = {}
+        # Example piece code mapping to filenames in ../images/:
+        self.piece_filenames = {
+            "bK": "bK.png", "bQ": "bQ.png", "bR": "bR.png",
+            "bB": "bB.png", "bN": "bN.png", "bp": "bp.png",
+            "wK": "wK.png", "wQ": "wQ.png", "wR": "wR.png",
+            "wB": "wB.png", "wN": "wN.png", "wp": "wp.png",
         }
 
+        # Load piece images
+        self.piece_images = {}
+        for code, fname in self.piece_filenames.items():
+            path = os.path.join("..", "images", fname)
+            img = pygame.image.load(path)
+            # Scale to square size
+            img = pygame.transform.smoothscale(img, (self.square_size, self.square_size))
+            self.piece_images[code] = img
+
+        # Assign codes to each piece object
+        for pos, piece in self.board.items():
+            if piece.color == "black":
+                if isinstance(piece, Rook):
+                    self.display_pieces[piece] = "bR"
+                elif isinstance(piece, Knight):
+                    self.display_pieces[piece] = "bN"
+                elif isinstance(piece, Bishop):
+                    self.display_pieces[piece] = "bB"
+                elif isinstance(piece, Queen):
+                    self.display_pieces[piece] = "bQ"
+                elif isinstance(piece, King):
+                    self.display_pieces[piece] = "bK"
+                elif isinstance(piece, Pawn):
+                    self.display_pieces[piece] = "bp"
+            else:
+                # White
+                if isinstance(piece, Rook):
+                    self.display_pieces[piece] = "wR"
+                elif isinstance(piece, Knight):
+                    self.display_pieces[piece] = "wN"
+                elif isinstance(piece, Bishop):
+                    self.display_pieces[piece] = "wB"
+                elif isinstance(piece, Queen):
+                    self.display_pieces[piece] = "wQ"
+                elif isinstance(piece, King):
+                    self.display_pieces[piece] = "wK"
+                elif isinstance(piece, Pawn):
+                    self.display_pieces[piece] = "wp"
+
     def move_piece(self, from_square, to_square):
+        """Perform a move if it is legal."""
         piece = self.board.get(from_square)
-        if piece is not None:
+        if piece:
             legal_moves = piece.get_legal_moves(from_square, self.board)
             if to_square in legal_moves:
                 self.board[to_square] = piece
@@ -617,51 +555,149 @@ class Game:
                 return True
         return False
 
+    def draw_board(self):
+        """
+        Draw an 8x8 board of alternating colors,
+        then blit each piece image on its square.
+        """
+        # Light/dark square colors
+        colors = [(233, 236, 239), (125, 135, 150)]
+
+        # Draw squares
+        for row in range(8):
+            for col in range(8):
+                color = colors[(row + col) % 2]
+                rect = pygame.Rect(col * self.square_size,
+                                   row * self.square_size,
+                                   self.square_size,
+                                   self.square_size)
+                pygame.draw.rect(self.screen, color, rect)
+
+        # Draw pieces
+        for (r, c), piece in self.board.items():
+            code = self.display_pieces.get(piece, None)
+            if code:
+                image = self.piece_images.get(code, None)
+                if image:
+                    x_pos = c * self.square_size
+                    y_pos = r * self.square_size
+                    self.screen.blit(image, (x_pos, y_pos))
+
+    def update_ui(self):
+        """Refresh the entire board and display."""
+        self.draw_board()
+        pygame.display.flip()
+
     def play_bot_move(self):
-        bot = Bot("black")
-        bot_move = bot(self.board)
-        if bot_move:
-            from_square, to_square = bot_move
-            self.move_piece(from_square, to_square)
+        """Have the bot select and make a move."""
+        move = self.bot.select_move(self.bot.get_possible_bot_moves(self.board), self)
+        if move:
+            self.bot.make_move(self, move)
 
-    def is_checkmate(self):
-        pass
-
-    def is_occupied(self, square):
-        logger.info(square)
-        isoccupied = self.board.get(square, None)
-        if isoccupied is not None:
-            return True
+    def is_square_attacked(self, square, color):
+        """
+        Return True if 'square' is attacked by the opponent of 'color'.
+        That is, any piece of the opposite color can move to 'square'.
+        """
+        opponent_color = "white" if color == "black" else "black"
+        for pos, piece in self.board.items():
+            if piece.color == opponent_color:
+                if square in piece.get_legal_moves(pos, self.board):
+                    return True
         return False
 
-    def _ui_to_piece(self, from_square):
-        return self.display_pieces[self.board[from_square]]
+    def is_checkmate(self):
+        """
+        Simple checkmate logic (not fully robust):
+        1. Find the current side's king.
+        2. If king not in check, not checkmate.
+        3. If no move can get out of check, checkmate.
+        """
+        king_pos = None
+        for pos, piece in self.board.items():
+            if isinstance(piece, King) and piece.color == self.turn:
+                king_pos = pos
+                break
 
-    def update(self, from_square, to_square, piece):
-        piece = self._ui_to_piece(from_square, piece)
-        # is move valid?
+        if king_pos is None:
+            return True  # No king found => treat as checkmate or special condition
 
+        # Is king in check?
+        if not self.is_square_attacked(king_pos, self.turn):
+            return False
+
+        # Try to find a move that would evade check
+        for pos, piece in self.board.items():
+            if piece.color == self.turn:
+                possible_moves = piece.get_legal_moves(pos, self.board)
+                for new_pos in possible_moves:
+                    captured = self.board.get(new_pos)
+                    self.board[new_pos] = piece
+                    del self.board[pos]
+
+                    # If the king was moved, track new position
+                    temp_king_pos = new_pos if pos == king_pos else king_pos
+                    still_in_check = self.is_square_attacked(temp_king_pos, self.turn)
+
+                    # Revert
+                    self.board[pos] = piece
+                    if captured:
+                        self.board[new_pos] = captured
+                    else:
+                        del self.board[new_pos]
+
+                    if not still_in_check:
+                        return False
+
+        return True
+
+    def is_occupied(self, square):
+        """Check if a given square is occupied."""
+        return square in self.board
+
+
+# -------------------------------------------------------------------------
+#                           MAIN LOOP FUNCTION
+# -------------------------------------------------------------------------
 
 def play_game():
-    board = Game.build_game()
-
+    """Main game loop using PyGame events."""
+    pygame.init()
+    game = Game.build_game()
+    running = True
     bot_turn = False
-    while not board.is_checkmate():
-        # the code in here deals with the screen.
-        # it contains no chess logic
-        # chess logic comes from the Game class
+
+    while running and not game.is_checkmate():
+        game.update_ui()  # Redraw board each iteration
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
-                exit(0)
+                running = False
+
             elif event.type == pygame.MOUSEBUTTONDOWN:
+                # For example, handle user moves or piece selection
                 pass
-                # board.update(from_square, to_square, piece)
-            # etc
-        pygame.display.flip()
+
+        if bot_turn:
+            game.play_bot_move()
+            # Switch turn to White
+            game.turn = "white"
+            bot_turn = False
+        else:
+            # Wait or handle the player's move
+            # If the player makes a move, switch turn to black, e.g.:
+            # game.turn = "black"
+            pass
+
+        # (Optional) Decide how to toggle `bot_turn` or handle player moves.
+        # For now, let's just always let the bot move so you can see it run:
+        bot_turn = True
+
+    if game.is_checkmate():
+        print("Checkmate detected!")
 
     pygame.quit()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     play_game()
-#TODO:make a test for checking the mouse pos and figure out how to convert the xy (pixels) coordinates to squares
